@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>James's Website</title>
+
+  <!-- Inter is a clean, modern sans-serif font from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────
+       Browsers add default margins and padding to elements.
+       We clear those so we're starting from a clean slate.        */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ── Page background & font ─────────────────────────────────────
+       #FAF9F7 is a warm off-white — softer than pure white (#FFFFFF)
+       but still very light. Line-height of 1.6 gives text room to
+       breathe, making it easier to read.                          */
+    body {
+      background-color: #FAF9F7;
+      color: #1a1a1a;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    /* ── Centred container ──────────────────────────────────────────
+       max-width stops the content from stretching too wide on large
+       screens. margin: auto centres it horizontally.              */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+
+    /* ── Page title ─────────────────────────────────────────────── */
+    h1 {
+      font-size: 2rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 48px;
+      color: #111;
+    }
+
+    /* ── Page list ──────────────────────────────────────────────────
+       list-style: none removes the default bullet points.         */
+    .page-list {
+      list-style: none;
+    }
+
+    /* Each entry in the list */
+    .page-list li {
+      margin-bottom: 32px;
+    }
+
+    /* ── Page link ──────────────────────────────────────────────────
+       text-decoration: none removes the default underline.
+       We add our own subtle underline on hover below.             */
+    .page-list a {
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: #111;
+      text-decoration: none;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 1px;
+      transition: border-color 0.2s ease;
+    }
+
+    /* Underline becomes darker when you hover over the link */
+    .page-list a:hover {
+      border-color: #111;
+    }
+
+    /* ── Description text ───────────────────────────────────────── */
+    .page-list p {
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to my webpage</h1>
+
+    <!-- Each <li> is one page entry: a link title + short description.
+         Replace href="#" with the real file path once pages are built,
+         e.g. href="ideas.html"                                        -->
+    <ul class="page-list">
+      <li>
+        <a href="pension-calculator.html">Pension Calculator</a>
+        <p>Estimate how your pension pot could grow and what monthly income it might provide at retirement.</p>
+      </li>
+    </ul>
+  </div>
+</body>
+</html>

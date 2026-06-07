@@ -1,0 +1,20 @@
+# ── macOS ────────────────────────────────────────────────────────────
+# Finder creates .DS_Store files automatically in folders you browse.
+# They store things like icon positions — useless to anyone else.
+.DS_Store
+.DS_Store?
+
+# ── Windows ──────────────────────────────────────────────────────────
+# Windows creates Thumbs.db to cache folder thumbnail images.
+Thumbs.db
+ehthumbs.db
+
+# ── Code editors ─────────────────────────────────────────────────────
+# VS Code stores personal editor preferences here.
+.vscode/
+
+# ── Secrets (important if we ever add API keys) ───────────────────────
+# If we ever create a file to store sensitive keys or credentials,
+# we'll add it here so it never accidentally gets uploaded to GitHub.
+# Example (uncomment when needed):
+# .env

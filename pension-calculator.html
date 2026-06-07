@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pension Calculator</title>
+
+  <!-- Same font as the homepage for visual consistency -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js: a popular library for drawing charts in the browser.
+       We load it from a CDN (a hosted library server) so we don't
+       need to download or manage it ourselves.                     -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* ── Base styles (same as homepage) ─────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #FAF9F7;
+      color: #1a1a1a;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ── Back link ──────────────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      font-size: 0.85rem;
+      color: #888;
+      text-decoration: none;
+      margin-bottom: 40px;
+      letter-spacing: 0.01em;
+    }
+
+    .back-link:hover {
+      color: #111;
+    }
+
+    /* ── Page heading ───────────────────────────────────────────── */
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: #111;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 48px;
+    }
+
+    /* ── Form ───────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      /* Two equal columns side by side on wider screens */
+      grid-template-columns: 1fr 1fr;
+      gap: 24px 32px;
+      margin-bottom: 36px;
+    }
+
+    /* Stack to a single column on narrow/mobile screens */
+    @media (max-width: 480px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    /* ── Text inputs ────────────────────────────────────────────── */
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      color: #111;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      /* Remove the default browser spin arrows on number inputs */
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: #999;
+    }
+
+    .input-hint {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-top: 5px;
+    }
+
+    /* ── Calculate button ───────────────────────────────────────── */
+    button {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #111;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      margin-bottom: 48px;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    /* ── Results section (hidden until Calculate is clicked) ────── */
+    #results {
+      display: none; /* Hidden by default; shown by JavaScript below */
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    @media (max-width: 480px) {
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .result-card {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .result-card .result-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #888;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .result-card .result-value {
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: #111;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Chart ──────────────────────────────────────────────────── */
+    h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #111;
+      margin-bottom: 24px;
+    }
+
+    .chart-wrapper {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    /* ── Disclaimer ─────────────────────────────────────────────── */
+    .disclaimer {
+      margin-top: 32px;
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a class="back-link" href="index.html">← Back</a>
+
+    <h1>Pension Calculator</h1>
+    <p class="subtitle">
+      Estimate how your pension could grow over time.
+      Figures are illustrative — not financial advice.
+    </p>
+
+    <!-- ── Input form ──────────────────────────────────────────── -->
+    <div class="form-grid">
+
+      <div>
+        <label for="current-age">Current age</label>
+        <input type="number" id="current-age" placeholder="e.g. 30" min="16" max="80" />
+      </div>
+
+      <div>
+        <label for="retirement-age">Retirement age</label>
+        <input type="number" id="retirement-age" placeholder="e.g. 67" min="55" max="80" />
+        <p class="input-hint">UK state pension age is currently 66</p>
+      </div>
+
+      <div>
+        <label for="current-pot">Current pension pot (£)</label>
+        <input type="number" id="current-pot" placeholder="e.g. 20000" min="0" />
+      </div>
+
+      <div>
+        <label for="monthly-contribution">Monthly contributions (£)</label>
+        <input type="number" id="monthly-contribution" placeholder="e.g. 400" min="0" />
+        <p class="input-hint">Include employer contributions if applicable</p>
+      </div>
+
+      <div>
+        <label for="growth-rate">Expected annual growth rate (%)</label>
+        <input type="number" id="growth-rate" placeholder="e.g. 5" min="0" max="20" step="0.1" />
+        <p class="input-hint">5–7% is a common moderate assumption</p>
+      </div>
+
+    </div>
+
+    <button onclick="calculate()">Calculate</button>
+
+    <!-- ── Results (shown after Calculate is clicked) ────────────── -->
+    <div id="results">
+
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-label">Projected pot at retirement</div>
+          <div class="result-value" id="output-pot">—</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Estimated monthly income</div>
+          <div class="result-value" id="output-income">—</div>
+        </div>
+      </div>
+
+      <h2>Pension growth over time</h2>
+      <div class="chart-wrapper">
+        <!-- The <canvas> element is where Chart.js draws the chart.
+             Think of it as a blank drawing surface.               -->
+        <canvas id="growth-chart"></canvas>
+      </div>
+
+      <p class="disclaimer">
+        These projections assume a constant rate of return and do not account for inflation,
+        tax relief, or changes in contributions over time. This calculator is for illustrative
+        purposes only and does not constitute financial advice.
+      </p>
+
+    </div>
+
+  </div>
+
+  <script>
+    // We keep a reference to the chart so we can destroy and redraw
+    // it if the user clicks Calculate more than once.
+    let chartInstance = null;
+
+    function calculate() {
+
+      // ── 1. Read the values the user typed in ──────────────────────
+      // parseInt / parseFloat convert text strings into numbers.
+      const currentAge     = parseInt(document.getElementById('current-age').value);
+      const retirementAge  = parseInt(document.getElementById('retirement-age').value);
+      const currentPot     = parseFloat(document.getElementById('current-pot').value) || 0;
+      const monthlyContrib = parseFloat(document.getElementById('monthly-contribution').value) || 0;
+      const annualRate     = parseFloat(document.getElementById('growth-rate').value) / 100;
+
+      // ── 2. Basic validation ───────────────────────────────────────
+      if (isNaN(currentAge) || isNaN(retirementAge) || isNaN(annualRate)) {
+        alert('Please fill in all fields.');
+        return;
+      }
+      if (retirementAge <= currentAge) {
+        alert('Retirement age must be greater than your current age.');
+        return;
+      }
+
+      // ── 3. Calculate projected pot ────────────────────────────────
+      // We work in months because contributions are monthly.
+      // Monthly growth rate = annual rate divided by 12.
+      //
+      // The formula used is the standard "future value" formula:
+      //   FV = PV × (1 + r)^n  +  PMT × ((1 + r)^n − 1) / r
+      //
+      // Where:
+      //   PV  = current pot value
+      //   r   = monthly interest rate
+      //   n   = total number of months
+      //   PMT = monthly contribution
+      //
+      // This gives us the total value of the pot at retirement.
+
+      const monthlyRate  = annualRate / 12;
+      const years        = retirementAge - currentAge;
+      const months       = years * 12;
+
+      // Growth factor: how much £1 grows over the full period
+      const growthFactor = Math.pow(1 + monthlyRate, months);
+
+      let finalPot;
+      if (monthlyRate === 0) {
+        // Edge case: if growth rate is 0, the formula simplifies
+        finalPot = currentPot + monthlyContrib * months;
+      } else {
+        finalPot = currentPot * growthFactor
+                 + monthlyContrib * (growthFactor - 1) / monthlyRate;
+      }
+
+      // ── 4. Estimate monthly income ────────────────────────────────
+      // We use the "4% rule" — a widely cited rule of thumb that says
+      // you can withdraw 4% of your pot per year without running out
+      // of money over a ~30-year retirement.
+      // Monthly income = (pot × 4%) ÷ 12
+      const monthlyIncome = (finalPot * 0.04) / 12;
+
+      // ── 5. Display the result cards ───────────────────────────────
+      document.getElementById('output-pot').textContent    = formatCurrency(finalPot);
+      document.getElementById('output-income').textContent = formatCurrency(monthlyIncome) + '/mo';
+
+      // ── 6. Build the chart data ───────────────────────────────────
+      // We calculate the pot value at the end of each year so we can
+      // plot how it grows over time.
+      const labels = [];  // x-axis: ages
+      const data   = [];  // y-axis: pot values
+
+      for (let age = currentAge; age <= retirementAge; age++) {
+        const yearsElapsed = age - currentAge;
+        const n = yearsElapsed * 12;
+
+        let potAtAge;
+        if (monthlyRate === 0) {
+          potAtAge = currentPot + monthlyContrib * n;
+        } else {
+          const gf = Math.pow(1 + monthlyRate, n);
+          potAtAge = currentPot * gf + monthlyContrib * (gf - 1) / monthlyRate;
+        }
+
+        labels.push(age);
+        data.push(Math.round(potAtAge));
+      }
+
+      // ── 7. Draw the chart ─────────────────────────────────────────
+      // If a chart already exists from a previous calculation, destroy
+      // it first to avoid drawing on top of the old one.
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const ctx = document.getElementById('growth-chart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Pension pot (£)',
+            data: data,
+            borderColor: '#111',
+            backgroundColor: 'rgba(17, 17, 17, 0.05)',
+            borderWidth: 2,
+            pointRadius: 0,         // Hide individual data point dots
+            pointHoverRadius: 4,    // Show a dot when hovering
+            fill: true,
+            tension: 0.3            // Slight curve on the line
+          }]
+        },
+        options: {
+          responsive: true,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                // Format the tooltip values as currency
+                label: (ctx) => ' ' + formatCurrency(ctx.parsed.y)
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Age',
+                color: '#999',
+                font: { family: 'Inter', size: 11 }
+              },
+              ticks: {
+                color: '#999',
+                font: { family: 'Inter', size: 11 }
+              },
+              grid: { color: '#f0f0f0' }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Pension pot (£)',
+                color: '#999',
+                font: { family: 'Inter', size: 11 }
+              },
+              ticks: {
+                color: '#999',
+                font: { family: 'Inter', size: 11 },
+                // Format y-axis labels as compact currency (e.g. £120k)
+                callback: (value) => '£' + formatCompact(value)
+              },
+              grid: { color: '#f0f0f0' }
+            }
+          }
+        }
+      });
+
+      // ── 8. Show the results section ───────────────────────────────
+      // By default the results div is hidden (display: none in CSS).
+      // We change it to 'block' to make it visible.
+      document.getElementById('results').style.display = 'block';
+
+      // Scroll smoothly down to the results
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    }
+
+
+    // ── Helper: format a number as £1,234,567 ─────────────────────
+    function formatCurrency(value) {
+      return '£' + Math.round(value).toLocaleString('en-GB');
+    }
+
+    // ── Helper: format large numbers compactly (e.g. 120000 → 120k) ─
+    function formatCompact(value) {
+      if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'm';
+      if (value >= 1_000)     return (value / 1_000).toFixed(0) + 'k';
+      return value;
+    }
+  </script>
+</body>
+</html>
