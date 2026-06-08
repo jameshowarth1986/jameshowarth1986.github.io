@@ -238,6 +238,53 @@
       vertical-align: middle;
     }
 
+    /* ── Band / tier breakdown tables ────────────────────────────────
+       Shows exactly how much of the salary falls into each Income Tax
+       band and each National Insurance tier, and what's paid on it.
+       Built as a simple grid of rows rather than a <table> so it stays
+       consistent with the rest of the site's styling.               */
+    .band-breakdown {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .band-row {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 0.7fr 1fr;
+      gap: 6px 10px;
+      font-size: 0.85rem;
+      padding: 9px 0;
+      border-bottom: 1px solid #f3f3f3;
+    }
+
+    .band-row:last-child {
+      border-bottom: none;
+    }
+
+    .band-row span {
+      color: #555;
+    }
+
+    .band-row .band-name {
+      color: #111;
+      font-weight: 400;
+    }
+
+    .band-row-header {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e3e3e3;
+    }
+
+    .band-row-header span {
+      color: #888;
+    }
+
     /* ── Disclaimer ─────────────────────────────────────────────── */
     .disclaimer {
       font-size: 0.75rem;
@@ -279,9 +326,9 @@
 
       <div class="results-grid">
         <div class="result-card">
-          <div class="result-label">Take-home pay</div>
+          <div class="result-label">Take-home pay (per year)</div>
           <div class="result-value" id="output-takehome-year">—</div>
-          <div class="result-subvalue" id="output-takehome-month">—</div>
+          <div class="result-subvalue">Estimated monthly: <strong id="output-takehome-month">—</strong></div>
         </div>
         <div class="result-card">
           <div class="result-label">Income Tax</div>
@@ -306,6 +353,30 @@
           <span><span class="swatch" style="background:#999;"></span>Income Tax: <strong id="label-tax">—</strong></span>
           <span><span class="swatch" style="background:#ccc;"></span>National Insurance: <strong id="label-ni">—</strong></span>
         </div>
+      </div>
+
+      <!-- Income Tax broken down band by band -->
+      <div class="band-breakdown">
+        <div class="breakdown-title">Income Tax — by band</div>
+        <div class="band-row band-row-header">
+          <span>Band</span>
+          <span>Income in this band</span>
+          <span>Rate</span>
+          <span>Tax</span>
+        </div>
+        <div id="tax-band-rows"></div>
+      </div>
+
+      <!-- National Insurance broken down tier by tier -->
+      <div class="band-breakdown">
+        <div class="breakdown-title">National Insurance — by tier</div>
+        <div class="band-row band-row-header">
+          <span>Tier</span>
+          <span>Income in this tier</span>
+          <span>Rate</span>
+          <span>NI</span>
+        </div>
+        <div id="ni-band-rows"></div>
       </div>
 
       <p class="disclaimer">
@@ -373,20 +444,20 @@
 
       const basicRateBandTop = personalAllowance + BASIC_RATE_BAND_WIDTH;
 
-      let incomeTax = 0;
+      // Work out exactly how much of the salary falls into each band.
+      // Math.max(0, …) stops these going negative for salaries that
+      // don't reach that band at all.
+      const incomeInPersonalAllowance = Math.min(grossSalary, personalAllowance);
+      const incomeAtBasicRate         = Math.max(0, Math.min(grossSalary, basicRateBandTop) - personalAllowance);
+      const incomeAtHigherRate        = Math.max(0, Math.min(grossSalary, ADDITIONAL_RATE_THRESHOLD) - basicRateBandTop);
+      const incomeAtAdditionalRate    = Math.max(0, grossSalary - ADDITIONAL_RATE_THRESHOLD);
 
-      if (grossSalary > personalAllowance) {
-        const amountAtBasicRate = Math.min(grossSalary, basicRateBandTop) - personalAllowance;
-        incomeTax += amountAtBasicRate * 0.20;
-      }
-      if (grossSalary > basicRateBandTop) {
-        const amountAtHigherRate = Math.min(grossSalary, ADDITIONAL_RATE_THRESHOLD) - basicRateBandTop;
-        incomeTax += amountAtHigherRate * 0.40;
-      }
-      if (grossSalary > ADDITIONAL_RATE_THRESHOLD) {
-        const amountAtAdditionalRate = grossSalary - ADDITIONAL_RATE_THRESHOLD;
-        incomeTax += amountAtAdditionalRate * 0.45;
-      }
+      // Tax due from each band (rate × the amount of income sitting in it)
+      const taxAtBasicRate      = incomeAtBasicRate * 0.20;
+      const taxAtHigherRate     = incomeAtHigherRate * 0.40;
+      const taxAtAdditionalRate = incomeAtAdditionalRate * 0.45;
+
+      const incomeTax = taxAtBasicRate + taxAtHigherRate + taxAtAdditionalRate;
 
       // ── 4. Calculate National Insurance ────────────────────────────
       // This uses the Class 1, Category A rates — the standard category
@@ -402,16 +473,14 @@
       const PRIMARY_THRESHOLD    = 12570;
       const UPPER_EARNINGS_LIMIT = 50270;
 
-      let nationalInsurance = 0;
+      const incomeBelowPrimaryThreshold = Math.min(grossSalary, PRIMARY_THRESHOLD);
+      const incomeAtMainNIRate          = Math.max(0, Math.min(grossSalary, UPPER_EARNINGS_LIMIT) - PRIMARY_THRESHOLD);
+      const incomeAboveUpperLimit       = Math.max(0, grossSalary - UPPER_EARNINGS_LIMIT);
 
-      if (grossSalary > PRIMARY_THRESHOLD) {
-        const amountAtMainRate = Math.min(grossSalary, UPPER_EARNINGS_LIMIT) - PRIMARY_THRESHOLD;
-        nationalInsurance += amountAtMainRate * 0.08;
-      }
-      if (grossSalary > UPPER_EARNINGS_LIMIT) {
-        const amountAboveLimit = grossSalary - UPPER_EARNINGS_LIMIT;
-        nationalInsurance += amountAboveLimit * 0.02;
-      }
+      const niAtMainRate  = incomeAtMainNIRate * 0.08;
+      const niAboveLimit  = incomeAboveUpperLimit * 0.02;
+
+      const nationalInsurance = niAtMainRate + niAboveLimit;
 
       // ── 5. Work out take-home pay ──────────────────────────────────
       // Whatever's left after Income Tax and National Insurance have
@@ -420,9 +489,41 @@
 
       // ── 6. Update the result cards ─────────────────────────────────
       document.getElementById('output-takehome-year').textContent  = formatCurrency(takeHome);
-      document.getElementById('output-takehome-month').textContent = formatCurrency(takeHome / 12) + ' per month';
+      document.getElementById('output-takehome-month').textContent = formatCurrency(takeHome / 12);
       document.getElementById('output-tax').textContent = formatCurrency(incomeTax);
       document.getElementById('output-ni').textContent  = formatCurrency(nationalInsurance);
+
+      // ── 6b. Build the "Income Tax by band" table ───────────────────
+      // We only add a row for a band if some of the salary actually
+      // falls into it — e.g. someone on £20,000 will never see a
+      // "Higher rate" row, because none of their income reaches it.
+      const taxRows = [];
+      if (incomeInPersonalAllowance > 0) {
+        taxRows.push(bandRow('Personal Allowance', incomeInPersonalAllowance, 0, 0));
+      }
+      if (incomeAtBasicRate > 0) {
+        taxRows.push(bandRow('Basic rate', incomeAtBasicRate, 20, taxAtBasicRate));
+      }
+      if (incomeAtHigherRate > 0) {
+        taxRows.push(bandRow('Higher rate', incomeAtHigherRate, 40, taxAtHigherRate));
+      }
+      if (incomeAtAdditionalRate > 0) {
+        taxRows.push(bandRow('Additional rate', incomeAtAdditionalRate, 45, taxAtAdditionalRate));
+      }
+      document.getElementById('tax-band-rows').innerHTML = taxRows.join('');
+
+      // ── 6c. Build the "National Insurance by tier" table ───────────
+      const niRows = [];
+      if (incomeBelowPrimaryThreshold > 0) {
+        niRows.push(bandRow('Up to Primary Threshold', incomeBelowPrimaryThreshold, 0, 0));
+      }
+      if (incomeAtMainNIRate > 0) {
+        niRows.push(bandRow('Main rate', incomeAtMainNIRate, 8, niAtMainRate));
+      }
+      if (incomeAboveUpperLimit > 0) {
+        niRows.push(bandRow('Above Upper Earnings Limit', incomeAboveUpperLimit, 2, niAboveLimit));
+      }
+      document.getElementById('ni-band-rows').innerHTML = niRows.join('');
 
       // ── 7. Update the breakdown bar ─────────────────────────────────
       // Each segment's width is its share of the gross salary, so the
@@ -443,6 +544,18 @@
       // ── 8. Show the results ─────────────────────────────────────────
       document.getElementById('results').style.display = 'block';
       document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── Helper: build one row of a band/tier breakdown table ─────────
+    // Returns a small chunk of HTML — four columns: the band's name,
+    // how much salary falls inside it, its rate, and what's due on it.
+    function bandRow(name, amountInBand, ratePercent, amountDue) {
+      return '<div class="band-row">' +
+               '<span class="band-name">' + name + '</span>' +
+               '<span>' + formatCurrency(amountInBand) + '</span>' +
+               '<span>' + ratePercent + '%</span>' +
+               '<span>' + formatCurrency(amountDue) + '</span>' +
+             '</div>';
     }
 
     // ── Helper: format a number as £1,234.00 ─────────────────────────
