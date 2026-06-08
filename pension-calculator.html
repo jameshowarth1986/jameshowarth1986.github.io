@@ -192,7 +192,13 @@
       font-size: 1rem;
       font-weight: 500;
       color: #111;
-      margin-bottom: 24px;
+      margin-bottom: 4px;
+    }
+
+    .chart-caption {
+      font-size: 0.8rem;
+      color: #999;
+      margin-bottom: 20px;
     }
 
     .chart-wrapper {
@@ -272,6 +278,9 @@
       </div>
 
       <h2>Pension growth over time</h2>
+      <!-- Filled in by JavaScript with the actual percentages compared,
+           e.g. "Comparing 3.0% (low), 5.0% (your estimate)..."        -->
+      <p class="chart-caption" id="chart-caption"></p>
       <div class="chart-wrapper">
         <!-- The <canvas> element is where Chart.js draws the chart.
              Think of it as a blank drawing surface.               -->
@@ -315,34 +324,39 @@
 
       // ── 3. Calculate projected pot ────────────────────────────────
       // We work in months because contributions are monthly.
-      // Monthly growth rate = annual rate divided by 12.
       //
       // The formula used is the standard "future value" formula:
       //   FV = PV × (1 + r)^n  +  PMT × ((1 + r)^n − 1) / r
       //
       // Where:
       //   PV  = current pot value
-      //   r   = monthly interest rate
-      //   n   = total number of months
+      //   r   = monthly interest rate (annual rate ÷ 12)
+      //   n   = number of months elapsed
       //   PMT = monthly contribution
       //
-      // This gives us the total value of the pot at retirement.
+      // We wrap this in a small reusable function — "projectPot" — so we
+      // can run the same maths for several different growth rates without
+      // repeating the formula each time. This is what lets us draw the
+      // low / medium / high comparison lines on the chart further down.
+      function projectPot(forAnnualRate, monthsElapsed) {
+        const r = forAnnualRate / 12;
 
-      const monthlyRate  = annualRate / 12;
-      const years        = retirementAge - currentAge;
-      const months       = years * 12;
+        if (r === 0) {
+          // Edge case: a 0% growth rate — the formula below would
+          // divide by zero, so we just add up contributions directly.
+          return currentPot + monthlyContrib * monthsElapsed;
+        }
 
-      // Growth factor: how much £1 grows over the full period
-      const growthFactor = Math.pow(1 + monthlyRate, months);
-
-      let finalPot;
-      if (monthlyRate === 0) {
-        // Edge case: if growth rate is 0, the formula simplifies
-        finalPot = currentPot + monthlyContrib * months;
-      } else {
-        finalPot = currentPot * growthFactor
-                 + monthlyContrib * (growthFactor - 1) / monthlyRate;
+        const growthFactor = Math.pow(1 + r, monthsElapsed);
+        return currentPot * growthFactor
+             + monthlyContrib * (growthFactor - 1) / r;
       }
+
+      const years  = retirementAge - currentAge;
+      const months = years * 12;
+
+      // The headline "projected pot" figure uses the rate the user entered.
+      const finalPot = projectPot(annualRate, months);
 
       // ── 4. Estimate monthly income ────────────────────────────────
       // We use the "4% rule" — a widely cited rule of thumb that says
@@ -355,27 +369,44 @@
       document.getElementById('output-pot').textContent    = formatCurrency(finalPot);
       document.getElementById('output-income').textContent = formatCurrency(monthlyIncome) + '/mo';
 
-      // ── 6. Build the chart data ───────────────────────────────────
-      // We calculate the pot value at the end of each year so we can
-      // plot how it grows over time.
-      const labels = [];  // x-axis: ages
-      const data   = [];  // y-axis: pot values
+      // ── 6. Build the chart data for three growth scenarios ────────
+      // A single projection is only as good as its assumed growth rate —
+      // and that rate is just a guess. To make that visible, we plot
+      // three lines side by side:
+      //
+      //   Low growth    → your chosen rate, minus 2 percentage points
+      //   Medium growth → the rate you entered
+      //   High growth   → your chosen rate, plus 2 percentage points
+      //
+      // ("Percentage points" just means a flat +/- 2 added to the
+      // number itself — e.g. 5% becomes 3% and 7%, not 5% ± 2% of 5%.)
+      //
+      // Seeing all three together gives a sense of how sensitive the
+      // projection is to the assumption — small changes in growth rate
+      // can make a big difference over a long time period.
+
+      const lowRate  = annualRate - 0.02;
+      const highRate = annualRate + 0.02;
+
+      const labels    = [];  // x-axis: ages
+      const lowData   = [];  // y-axis: pot value under low-growth assumption
+      const midData   = [];  // y-axis: pot value under your chosen rate
+      const highData  = [];  // y-axis: pot value under high-growth assumption
 
       for (let age = currentAge; age <= retirementAge; age++) {
-        const yearsElapsed = age - currentAge;
-        const n = yearsElapsed * 12;
-
-        let potAtAge;
-        if (monthlyRate === 0) {
-          potAtAge = currentPot + monthlyContrib * n;
-        } else {
-          const gf = Math.pow(1 + monthlyRate, n);
-          potAtAge = currentPot * gf + monthlyContrib * (gf - 1) / monthlyRate;
-        }
+        const monthsElapsed = (age - currentAge) * 12;
 
         labels.push(age);
-        data.push(Math.round(potAtAge));
+        lowData.push(Math.round(projectPot(lowRate, monthsElapsed)));
+        midData.push(Math.round(projectPot(annualRate, monthsElapsed)));
+        highData.push(Math.round(projectPot(highRate, monthsElapsed)));
       }
+
+      // Update the small caption above the chart with the actual
+      // percentages being compared, so the lines are easy to interpret.
+      document.getElementById('chart-caption').textContent =
+        `Comparing ${(lowRate * 100).toFixed(1)}% (low), ${(annualRate * 100).toFixed(1)}% (your estimate), `
+        + `and ${(highRate * 100).toFixed(1)}% (high) annual growth.`;
 
       // ── 7. Draw the chart ─────────────────────────────────────────
       // If a chart already exists from a previous calculation, destroy
@@ -389,17 +420,40 @@
         type: 'line',
         data: {
           labels: labels,
-          datasets: [{
-            label: 'Pension pot (£)',
-            data: data,
-            borderColor: '#111',
-            backgroundColor: 'rgba(17, 17, 17, 0.05)',
-            borderWidth: 2,
-            pointRadius: 0,         // Hide individual data point dots
-            pointHoverRadius: 4,    // Show a dot when hovering
-            fill: true,
-            tension: 0.3            // Slight curve on the line
-          }]
+          datasets: [
+            {
+              label: `Low growth (${(lowRate * 100).toFixed(1)}%)`,
+              data: lowData,
+              borderColor: '#c9c9c9',
+              borderWidth: 2,
+              borderDash: [5, 4],     // Dashed line — visually "lighter"
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false,
+              tension: 0.3
+            },
+            {
+              label: `Your estimate (${(annualRate * 100).toFixed(1)}%)`,
+              data: midData,
+              borderColor: '#111',
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false,
+              tension: 0.3
+            },
+            {
+              label: `High growth (${(highRate * 100).toFixed(1)}%)`,
+              data: highData,
+              borderColor: '#888',
+              borderWidth: 2,
+              borderDash: [5, 4],
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false,
+              tension: 0.3
+            }
+          ]
         },
         options: {
           responsive: true,
@@ -408,11 +462,21 @@
             intersect: false
           },
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                color: '#666',
+                font: { family: 'Inter', size: 11 },
+                boxWidth: 18,
+                padding: 16
+              }
+            },
             tooltip: {
               callbacks: {
-                // Format the tooltip values as currency
-                label: (ctx) => ' ' + formatCurrency(ctx.parsed.y)
+                // Format the tooltip values as currency, with the
+                // scenario name (e.g. "Low growth (3.0%)") in front
+                label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
               }
             }
           },
