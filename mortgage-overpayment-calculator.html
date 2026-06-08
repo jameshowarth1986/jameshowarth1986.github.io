@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mortgage Overpayment Calculator</title>
+
+  <!-- Same font as the rest of the site -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js — draws the balance-over-time graph -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* ── Base styles (consistent across the site) ───────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #FAF9F7;
+      color: #1a1a1a;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ── Back link ──────────────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      font-size: 0.85rem;
+      color: #888;
+      text-decoration: none;
+      margin-bottom: 40px;
+      letter-spacing: 0.01em;
+    }
+
+    .back-link:hover { color: #111; }
+
+    /* ── Headings ───────────────────────────────────────────────── */
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: #111;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #111;
+      margin-bottom: 4px;
+    }
+
+    .section-intro {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 24px;
+    }
+
+    .chart-caption {
+      font-size: 0.8rem;
+      color: #999;
+      margin-bottom: 20px;
+    }
+
+    /* ── Form ───────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px 32px;
+      margin-bottom: 36px;
+    }
+
+    .form-grid.single-column {
+      grid-template-columns: 1fr;
+      max-width: 280px;
+    }
+
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      color: #111;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+
+    input[type="number"]:focus { border-color: #999; }
+
+    .input-hint {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-top: 5px;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────── */
+    button {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #111;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      margin-bottom: 20px;
+    }
+
+    button:hover { background: #333; }
+
+    /* ── Result cards ───────────────────────────────────────────── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .results-grid.single {
+      grid-template-columns: 1fr;
+      max-width: 320px;
+    }
+
+    @media (max-width: 480px) {
+      .results-grid { grid-template-columns: 1fr; }
+    }
+
+    .result-card {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .result-card .result-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #888;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .result-card .result-value {
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: #111;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Sections that reveal progressively ─────────────────────── */
+    #step-2, #step-3 {
+      display: none;
+      padding-top: 8px;
+      margin-top: 8px;
+      border-top: 1px solid #eee;
+    }
+
+    /* ── Chart ──────────────────────────────────────────────────── */
+    .chart-wrapper {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    /* ── Disclaimer ─────────────────────────────────────────────── */
+    .disclaimer {
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a class="back-link" href="index.html">← Back</a>
+
+    <h1>Mortgage Overpayment Calculator</h1>
+    <p class="subtitle">
+      See how much you could save — and how much sooner you could be mortgage-free —
+      by paying a little extra each month. Figures are illustrative — not financial advice.
+    </p>
+
+    <!-- ── STEP 1: Enter mortgage details ─────────────────────────── -->
+    <div class="form-grid">
+      <div>
+        <label for="mortgage-balance">Outstanding balance (£)</label>
+        <input type="number" id="mortgage-balance" placeholder="e.g. 180000" min="1" />
+      </div>
+      <div>
+        <label for="interest-rate">Interest rate (% per year)</label>
+        <input type="number" id="interest-rate" placeholder="e.g. 4.5" min="0" step="0.01" />
+        <p class="input-hint">Use the rate shown on your mortgage statement</p>
+      </div>
+      <div>
+        <label for="remaining-term">Remaining term (years)</label>
+        <input type="number" id="remaining-term" placeholder="e.g. 22" min="1" max="40" />
+        <p class="input-hint">How many years are left to run</p>
+      </div>
+    </div>
+
+    <button onclick="calculatePayment()">Calculate monthly payment</button>
+
+    <!-- ── STEP 2: Show payment, then ask for an overpayment ──────── -->
+    <div id="step-2">
+
+      <div class="results-grid single">
+        <div class="result-card">
+          <div class="result-label">Your typical monthly payment</div>
+          <div class="result-value" id="output-monthly-payment">—</div>
+        </div>
+      </div>
+
+      <h2>Now try adding an overpayment</h2>
+      <p class="section-intro">
+        Enter an extra amount you could realistically pay each month on top of your
+        normal payment, and see what difference it makes.
+      </p>
+
+      <div class="form-grid single-column">
+        <div>
+          <label for="overpayment">Extra payment per month (£)</label>
+          <input type="number" id="overpayment" placeholder="e.g. 100" min="0" />
+        </div>
+      </div>
+
+      <button onclick="calculateOverpayment()">See the impact</button>
+    </div>
+
+    <!-- ── STEP 3: Show the impact of overpaying ──────────────────── -->
+    <div id="step-3">
+
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-label">Mortgage paid off</div>
+          <div class="result-value" id="output-time-saved">—</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Total interest saved</div>
+          <div class="result-value" id="output-money-saved">—</div>
+        </div>
+      </div>
+
+      <h2>Mortgage balance over time</h2>
+      <p class="chart-caption" id="chart-caption"></p>
+      <div class="chart-wrapper">
+        <!-- The <canvas> is where Chart.js draws the chart -->
+        <canvas id="balance-chart"></canvas>
+      </div>
+
+      <p class="disclaimer">
+        These figures assume your interest rate stays the same for the rest of the mortgage term,
+        and that overpayments are applied directly to the balance each month. Many lenders cap
+        how much you can overpay each year without a fee — check your mortgage terms before
+        making any changes. This calculator is for illustrative purposes only and does not
+        constitute financial advice.
+      </p>
+
+    </div>
+
+  </div>
+
+  <script>
+    // ── Shared state ───────────────────────────────────────────────
+    // These values are calculated in Step 1 and reused in Step 2,
+    // so we declare them here (outside any function) where both
+    // calculatePayment() and calculateOverpayment() can reach them.
+    let principal      = 0;   // outstanding mortgage balance
+    let monthlyRate    = 0;   // interest rate, converted to a monthly decimal
+    let originalMonths = 0;   // total months left on the mortgage as it stands
+    let basePayment    = 0;   // the typical monthly payment with no overpayment
+
+    let chartInstance = null; // reference to the chart, so we can redraw it
+
+
+    // ── STEP 1: Work out the typical monthly payment ───────────────
+    function calculatePayment() {
+
+      // Read and validate the inputs
+      const balanceInput = parseFloat(document.getElementById('mortgage-balance').value);
+      const rateInput    = parseFloat(document.getElementById('interest-rate').value);
+      const termInput    = parseFloat(document.getElementById('remaining-term').value);
+
+      if (isNaN(balanceInput) || isNaN(rateInput) || isNaN(termInput)) {
+        alert('Please fill in all three fields.');
+        return;
+      }
+      if (balanceInput <= 0 || termInput <= 0) {
+        alert('Balance and remaining term must be greater than zero.');
+        return;
+      }
+
+      // Store these in the shared variables so Step 2 can use them
+      principal      = balanceInput;
+      monthlyRate    = rateInput / 12 / 100;
+      originalMonths = Math.round(termInput * 12);
+
+      // ── The standard mortgage repayment formula ───────────────────
+      // This is the same "amortisation" formula used for any
+      // fixed-rate, fixed-term loan:
+      //
+      //   M = P × [r(1+r)^n] / [(1+r)^n − 1]
+      //
+      // Where:
+      //   P = the outstanding balance (principal)
+      //   r = the monthly interest rate
+      //   n = the number of months remaining
+      //   M = the monthly payment that pays off the loan exactly
+      //       on schedule
+      if (monthlyRate === 0) {
+        basePayment = principal / originalMonths;
+      } else {
+        const factor = Math.pow(1 + monthlyRate, originalMonths);
+        basePayment = principal * (monthlyRate * factor) / (factor - 1);
+      }
+
+      // Show the result
+      document.getElementById('output-monthly-payment').textContent =
+        formatCurrency(basePayment) + '/mo';
+
+      // Reveal Step 2 (the overpayment input) and hide Step 3 in case
+      // the user is recalculating after already seeing results once.
+      document.getElementById('step-2').style.display = 'block';
+      document.getElementById('step-3').style.display = 'none';
+
+      document.getElementById('step-2').scrollIntoView({ behavior: 'smooth' });
+    }
+
+
+    // ── STEP 2: Work out what overpaying actually does ─────────────
+    function calculateOverpayment() {
+
+      const overpayment = parseFloat(document.getElementById('overpayment').value);
+
+      if (isNaN(overpayment) || overpayment < 0) {
+        alert('Please enter how much extra you\'d like to pay each month (or 0 for none).');
+        return;
+      }
+
+      // ── Simulate the mortgage month-by-month ──────────────────────
+      // Unlike a fixed-schedule loan, we can't use a single formula here
+      // — overpaying changes the balance unpredictably each month, so
+      // we step through it one month at a time:
+      //
+      //   1. Work out the interest owed this month (balance × monthly rate)
+      //   2. Apply the payment (normal payment + overpayment)
+      //   3. Whatever's left after covering interest reduces the balance
+      //   4. Repeat until the balance reaches zero
+      //
+      // We also run the *same* simulation with no overpayment, purely so
+      // both totals are calculated the same way — this keeps the comparison
+      // fair even down to rounding differences.
+
+      const withOverpayment = simulateMortgage(principal, monthlyRate, basePayment, overpayment);
+      const withoutOverpayment = simulateMortgage(principal, monthlyRate, basePayment, 0);
+
+      const monthsSaved = withoutOverpayment.months - withOverpayment.months;
+      const interestSaved = withoutOverpayment.totalPaid - withOverpayment.totalPaid;
+
+      // ── Display the headline results ──────────────────────────────
+      document.getElementById('output-time-saved').textContent =
+        monthsSaved > 0 ? formatDuration(monthsSaved) + ' sooner' : 'No change';
+
+      document.getElementById('output-money-saved').textContent =
+        formatCurrency(Math.max(interestSaved, 0));
+
+      // ── Build the chart: balance over time, both scenarios ────────
+      // We sample the balance once a year (every 12 months) so the
+      // chart stays readable over long mortgage terms.
+      const yearsToShow = Math.ceil(withoutOverpayment.months / 12);
+
+      const labels = [];
+      const standardSeries = [];
+      const overpaySeries  = [];
+
+      for (let year = 0; year <= yearsToShow; year++) {
+        labels.push(year);
+        standardSeries.push(balanceAtMonth(principal, monthlyRate, basePayment, 0, year * 12));
+        overpaySeries.push(balanceAtMonth(principal, monthlyRate, basePayment, overpayment, year * 12));
+      }
+
+      document.getElementById('chart-caption').textContent =
+        overpayment > 0
+          ? `Comparing your normal repayment plan against paying an extra ${formatCurrency(overpayment)} per month.`
+          : `Showing your normal repayment plan — add an overpayment above to see a comparison.`;
+
+      drawChart(labels, standardSeries, overpaySeries);
+
+      // Reveal Step 3
+      document.getElementById('step-3').style.display = 'block';
+      document.getElementById('step-3').scrollIntoView({ behavior: 'smooth' });
+    }
+
+
+    // ── Helper: simulate a mortgage to completion ──────────────────
+    // Steps through the mortgage one month at a time until the
+    // balance reaches zero. Returns how many months it took and
+    // the total amount paid in (capital + interest) altogether.
+    function simulateMortgage(startingBalance, rate, payment, extra) {
+      let balance = startingBalance;
+      let totalPaid = 0;
+      let months = 0;
+
+      // A safety limit so a stray input (e.g. an interest rate higher
+      // than the payment can cover) can't loop forever.
+      const maxMonths = 1200; // 100 years
+
+      while (balance > 0 && months < maxMonths) {
+        const interest = balance * rate;
+        let thisPayment = payment + extra;
+
+        // On the final month, don't pay more than what's actually owed
+        if (thisPayment > balance + interest) {
+          thisPayment = balance + interest;
+        }
+
+        const principalPaid = thisPayment - interest;
+        balance -= principalPaid;
+        totalPaid += thisPayment;
+        months++;
+      }
+
+      return { months, totalPaid };
+    }
+
+
+    // ── Helper: what's the balance after a given number of months? ─
+    // Used to build the chart — runs the same simulation but stops
+    // early and reports the balance at the requested month.
+    function balanceAtMonth(startingBalance, rate, payment, extra, targetMonth) {
+      let balance = startingBalance;
+
+      for (let m = 0; m < targetMonth; m++) {
+        if (balance <= 0) return 0;
+
+        const interest = balance * rate;
+        let thisPayment = payment + extra;
+        if (thisPayment > balance + interest) {
+          thisPayment = balance + interest;
+        }
+
+        balance -= (thisPayment - interest);
+      }
+
+      return Math.max(Math.round(balance), 0);
+    }
+
+
+    // ── Draw (or redraw) the balance-over-time chart ───────────────
+    function drawChart(labels, standardSeries, overpaySeries) {
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const ctx = document.getElementById('balance-chart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Without overpayment',
+              data: standardSeries,
+              borderColor: '#c9c9c9',
+              borderWidth: 2,
+              borderDash: [5, 4],
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false,
+              tension: 0.3
+            },
+            {
+              label: 'With overpayment',
+              data: overpaySeries,
+              borderColor: '#111',
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                color: '#666',
+                font: { family: 'Inter', size: 11 },
+                boxWidth: 18,
+                padding: 16
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Years from now',
+                color: '#999',
+                font: { family: 'Inter', size: 11 }
+              },
+              ticks: { color: '#999', font: { family: 'Inter', size: 11 } },
+              grid: { color: '#f0f0f0' }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Remaining balance (£)',
+                color: '#999',
+                font: { family: 'Inter', size: 11 }
+              },
+              ticks: {
+                color: '#999',
+                font: { family: 'Inter', size: 11 },
+                callback: (value) => '£' + formatCompact(value)
+              },
+              grid: { color: '#f0f0f0' }
+            }
+          }
+        }
+      });
+    }
+
+
+    // ── Helper: turn a number of months into "X years Y months" ────
+    function formatDuration(totalMonths) {
+      const years  = Math.floor(totalMonths / 12);
+      const months = totalMonths % 12;
+
+      const yearPart  = years  > 0 ? `${years} year${years === 1 ? '' : 's'}`   : '';
+      const monthPart = months > 0 ? `${months} month${months === 1 ? '' : 's'}` : '';
+
+      if (yearPart && monthPart) return `${yearPart}, ${monthPart}`;
+      return yearPart || monthPart || '0 months';
+    }
+
+    // ── Helper: format a number as £1,234 ───────────────────────────
+    function formatCurrency(value) {
+      return '£' + Math.round(value).toLocaleString('en-GB');
+    }
+
+    // ── Helper: format large numbers compactly (e.g. 120000 → 120k) ─
+    function formatCompact(value) {
+      if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'm';
+      if (value >= 1_000)     return (value / 1_000).toFixed(0) + 'k';
+      return value;
+    }
+  </script>
+</body>
+</html>
