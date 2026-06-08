@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Take-Home Pay Calculator</title>
+
+  <!-- Same font as the rest of the site -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Base styles (consistent across the site) ───────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #FAF9F7;
+      color: #1a1a1a;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* ── Back link ──────────────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      font-size: 0.85rem;
+      color: #888;
+      text-decoration: none;
+      margin-bottom: 40px;
+      letter-spacing: 0.01em;
+    }
+
+    .back-link:hover {
+      color: #111;
+    }
+
+    /* ── Page heading ───────────────────────────────────────────── */
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: #111;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 48px;
+    }
+
+    /* ── Form ───────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px 32px;
+      margin-bottom: 36px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      color: #111;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.2s ease;
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: #999;
+    }
+
+    .input-hint {
+      font-size: 0.75rem;
+      color: #aaa;
+      margin-top: 5px;
+    }
+
+    /* ── Calculate button ───────────────────────────────────────── */
+    button {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #111;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      margin-bottom: 48px;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    /* ── Results (hidden until Calculate is clicked) ────────────── */
+    #results {
+      display: none;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 480px) {
+      .results-grid { grid-template-columns: 1fr; }
+    }
+
+    .result-card {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .result-card .result-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #888;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .result-card .result-value {
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: #111;
+      letter-spacing: -0.02em;
+    }
+
+    .result-card .result-subvalue {
+      font-size: 0.8rem;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    /* ── Breakdown bar ──────────────────────────────────────────────
+       A simple visual showing what proportion of your gross pay ends
+       up as take-home pay, vs. Income Tax and National Insurance.   */
+    .breakdown {
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+
+    .breakdown-title {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #888;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    /* The bar itself: a grey track with three coloured segments on top.
+       Using flexbox lets each segment claim a share of the width that
+       matches its percentage of the gross salary.                    */
+    .bar-track {
+      display: flex;
+      height: 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .bar-segment {
+      height: 100%;
+      transition: width 0.6s ease;
+      width: 0%;
+    }
+
+    .bar-labels {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .bar-labels span strong {
+      color: #111;
+      font-weight: 500;
+    }
+
+    /* Small coloured square shown next to each label, so the colours
+       in the bar can be matched up with the figures below it.       */
+    .swatch {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    /* ── Disclaimer ─────────────────────────────────────────────── */
+    .disclaimer {
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.6;
+    }
+
+    .disclaimer a {
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a class="back-link" href="index.html">← Back</a>
+
+    <h1>Take-Home Pay Calculator</h1>
+    <p class="subtitle">
+      Enter your annual salary to estimate your take-home pay after
+      Income Tax and National Insurance. Figures are illustrative — not financial advice.
+    </p>
+
+    <!-- ── Input form ─────────────────────────────────────────── -->
+    <div class="form-grid">
+
+      <div>
+        <label for="gross-salary">Annual gross salary (£)</label>
+        <input type="number" id="gross-salary" placeholder="e.g. 35000" min="0" />
+        <p class="input-hint">Your salary before any tax or deductions</p>
+      </div>
+
+    </div>
+
+    <button onclick="calculate()">Calculate</button>
+
+    <!-- ── Results ────────────────────────────────────────────── -->
+    <div id="results">
+
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-label">Take-home pay</div>
+          <div class="result-value" id="output-takehome-year">—</div>
+          <div class="result-subvalue" id="output-takehome-month">—</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">Income Tax</div>
+          <div class="result-value" id="output-tax">—</div>
+        </div>
+        <div class="result-card">
+          <div class="result-label">National Insurance</div>
+          <div class="result-value" id="output-ni">—</div>
+        </div>
+      </div>
+
+      <!-- Visual breakdown of where the gross salary goes -->
+      <div class="breakdown">
+        <div class="breakdown-title">Where your gross pay goes</div>
+        <div class="bar-track">
+          <div class="bar-segment" id="seg-takehome" style="background:#111;"></div>
+          <div class="bar-segment" id="seg-tax" style="background:#999;"></div>
+          <div class="bar-segment" id="seg-ni" style="background:#ccc;"></div>
+        </div>
+        <div class="bar-labels">
+          <span><span class="swatch" style="background:#111;"></span>Take-home: <strong id="label-takehome">—</strong></span>
+          <span><span class="swatch" style="background:#999;"></span>Income Tax: <strong id="label-tax">—</strong></span>
+          <span><span class="swatch" style="background:#ccc;"></span>National Insurance: <strong id="label-ni">—</strong></span>
+        </div>
+      </div>
+
+      <p class="disclaimer">
+        Based on <strong>2026/27 tax year</strong> rates (6 April 2026 to 5 April 2027) for
+        <strong>England, Northern Ireland and Wales</strong> — Scotland sets its own Income Tax bands,
+        so figures will differ there. This calculator assumes a standard tax-free Personal Allowance,
+        the standard employee category for National Insurance (Class 1, Category A), and a single
+        salaried job with no other income. It does not account for pension contributions, student
+        loan repayments, benefits in kind, or other deductions, all of which would change your
+        actual take-home pay. This is for illustrative purposes only and does not constitute
+        financial or tax advice. Source:
+        <a href="https://www.gov.uk/income-tax-rates" target="_blank" rel="noopener">gov.uk — Income Tax rates</a>
+        and
+        <a href="https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027" target="_blank" rel="noopener">gov.uk — Rates and thresholds for employers</a>.
+      </p>
+
+    </div>
+
+  </div>
+
+  <script>
+    function calculate() {
+
+      // ── 1. Read and validate the input ────────────────────────────
+      const grossSalary = parseFloat(document.getElementById('gross-salary').value);
+
+      if (isNaN(grossSalary) || grossSalary < 0) {
+        alert('Please enter your annual gross salary.');
+        return;
+      }
+
+      // ── 2. Work out your Personal Allowance ───────────────────────
+      // The Personal Allowance is the amount you can earn each year
+      // before paying any Income Tax at all. The standard amount for
+      // 2026/27 is £12,570.
+      //
+      // But if you earn over £100,000, the allowance shrinks — by £1
+      // for every £2 you earn above that — until it disappears
+      // completely once your income reaches £125,140.
+      const STANDARD_PERSONAL_ALLOWANCE = 12570;
+      const ALLOWANCE_TAPER_START       = 100000;
+
+      let personalAllowance = STANDARD_PERSONAL_ALLOWANCE;
+      if (grossSalary > ALLOWANCE_TAPER_START) {
+        const reduction = Math.floor((grossSalary - ALLOWANCE_TAPER_START) / 2);
+        personalAllowance = Math.max(0, STANDARD_PERSONAL_ALLOWANCE - reduction);
+      }
+
+      // ── 3. Calculate Income Tax using the 2026/27 bands ───────────
+      // (Rates for England, Northern Ireland and Wales — Scotland uses
+      // its own bands and rates.)
+      //
+      //   0%  on income up to your Personal Allowance
+      //   20% on the next £37,700 (the "basic rate" band)
+      //   40% on income above that, up to £125,140 (the "higher rate")
+      //   45% on anything above £125,140 (the "additional rate")
+      //
+      // The basic-rate band always covers £37,700 of income, starting
+      // from wherever your Personal Allowance ends — so as the
+      // allowance shrinks for higher earners, the band simply shifts
+      // down with it. The £125,140 additional-rate threshold, however,
+      // stays fixed (it's the point where the allowance reaches zero).
+      const BASIC_RATE_BAND_WIDTH     = 37700;
+      const ADDITIONAL_RATE_THRESHOLD = 125140;
+
+      const basicRateBandTop = personalAllowance + BASIC_RATE_BAND_WIDTH;
+
+      let incomeTax = 0;
+
+      if (grossSalary > personalAllowance) {
+        const amountAtBasicRate = Math.min(grossSalary, basicRateBandTop) - personalAllowance;
+        incomeTax += amountAtBasicRate * 0.20;
+      }
+      if (grossSalary > basicRateBandTop) {
+        const amountAtHigherRate = Math.min(grossSalary, ADDITIONAL_RATE_THRESHOLD) - basicRateBandTop;
+        incomeTax += amountAtHigherRate * 0.40;
+      }
+      if (grossSalary > ADDITIONAL_RATE_THRESHOLD) {
+        const amountAtAdditionalRate = grossSalary - ADDITIONAL_RATE_THRESHOLD;
+        incomeTax += amountAtAdditionalRate * 0.45;
+      }
+
+      // ── 4. Calculate National Insurance ────────────────────────────
+      // This uses the Class 1, Category A rates — the standard category
+      // that covers most employees.
+      //
+      //   0% on earnings up to the Primary Threshold (£12,570)
+      //   8% on earnings between the Primary Threshold and the
+      //      Upper Earnings Limit (£50,270)
+      //   2% on anything earned above the Upper Earnings Limit
+      //
+      // Unlike Income Tax, these thresholds are fixed amounts and don't
+      // taper away for higher earners.
+      const PRIMARY_THRESHOLD    = 12570;
+      const UPPER_EARNINGS_LIMIT = 50270;
+
+      let nationalInsurance = 0;
+
+      if (grossSalary > PRIMARY_THRESHOLD) {
+        const amountAtMainRate = Math.min(grossSalary, UPPER_EARNINGS_LIMIT) - PRIMARY_THRESHOLD;
+        nationalInsurance += amountAtMainRate * 0.08;
+      }
+      if (grossSalary > UPPER_EARNINGS_LIMIT) {
+        const amountAboveLimit = grossSalary - UPPER_EARNINGS_LIMIT;
+        nationalInsurance += amountAboveLimit * 0.02;
+      }
+
+      // ── 5. Work out take-home pay ──────────────────────────────────
+      // Whatever's left after Income Tax and National Insurance have
+      // been taken off is what actually lands in your pocket.
+      const takeHome = grossSalary - incomeTax - nationalInsurance;
+
+      // ── 6. Update the result cards ─────────────────────────────────
+      document.getElementById('output-takehome-year').textContent  = formatCurrency(takeHome);
+      document.getElementById('output-takehome-month').textContent = formatCurrency(takeHome / 12) + ' per month';
+      document.getElementById('output-tax').textContent = formatCurrency(incomeTax);
+      document.getElementById('output-ni').textContent  = formatCurrency(nationalInsurance);
+
+      // ── 7. Update the breakdown bar ─────────────────────────────────
+      // Each segment's width is its share of the gross salary, so the
+      // bar visually shows how the pie gets split three ways.
+      // (Guard against dividing by zero if gross salary is £0.)
+      const takeHomePct = grossSalary > 0 ? (takeHome / grossSalary) * 100 : 0;
+      const taxPct      = grossSalary > 0 ? (incomeTax / grossSalary) * 100 : 0;
+      const niPct       = grossSalary > 0 ? (nationalInsurance / grossSalary) * 100 : 0;
+
+      document.getElementById('seg-takehome').style.width = takeHomePct + '%';
+      document.getElementById('seg-tax').style.width      = taxPct + '%';
+      document.getElementById('seg-ni').style.width       = niPct + '%';
+
+      document.getElementById('label-takehome').textContent = formatCurrency(takeHome);
+      document.getElementById('label-tax').textContent      = formatCurrency(incomeTax);
+      document.getElementById('label-ni').textContent       = formatCurrency(nationalInsurance);
+
+      // ── 8. Show the results ─────────────────────────────────────────
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── Helper: format a number as £1,234.00 ─────────────────────────
+    function formatCurrency(value) {
+      return '£' + value.toLocaleString('en-GB', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+  </script>
+</body>
+</html>
